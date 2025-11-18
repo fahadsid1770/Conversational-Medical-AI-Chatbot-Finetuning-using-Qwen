@@ -10,3 +10,4 @@ accelerate
 bitsandbytes
 hf_xet
 jupyter
+flash-attn
