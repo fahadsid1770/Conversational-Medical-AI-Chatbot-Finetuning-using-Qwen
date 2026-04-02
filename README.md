@@ -1,4 +1,4 @@
-# Medical Consultation AI: Continuous Reinforcement Learning from Human Feedback
+# Medical Conversational AI Model Development with Continuous Learning (CLHF)
 
 This project features a high-performance medical assistant based on the Qwen2-0.5B-Instruct architecture. It is optimized via 4-bit QLoRA and implements a sophisticated continuous learning pipeline that refines model behavior through real-time human preference data.
 
