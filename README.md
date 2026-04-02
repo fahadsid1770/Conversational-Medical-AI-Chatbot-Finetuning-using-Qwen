@@ -1,238 +1,76 @@
-# Medical Chatbot Fine-tuning with Qwen2-0.5B
+# Medical Consultation AI: Continuous Reinforcement Learning from Human Feedback
 
-A medical chatbot fine-tuned from Qwen/Qwen2-0.5B-Instruct using QLoRA (Quantized Low-Rank Adaptation) technique. This project demonstrates how to efficiently fine-tune a language model for medical assistance while maintaining computational efficiency through 4-bit quantization.
+This project features a high-performance medical assistant based on the Qwen2-0.5B-Instruct architecture. It is optimized via 4-bit QLoRA and implements a sophisticated continuous learning pipeline that refines model behavior through real-time human preference data.
 
-## 🚀 Features
+## Project Overview
 
-- **Efficient Fine-tuning**: Uses QLoRa technique with 4-bit quantization to reduce memory usage
-- **Medical Domain Focus**: Trained on medical chatbot conversations
-- **Optimized Training**: Configured with cosine learning rate scheduling and gradient accumulation
-- **Model Deployment**: Ready-to-use adapter weights for inference
-- **Hugging Face Integration**: Pushes trained adapters to Hugging Face Hub
+The core objective of this system is to bridge the gap between static fine-tuning and dynamic user alignment. By integrating a feedback-driven optimization loop, the model can adapt to specific medical consultation nuances based on direct user interactions (Like/Dislike).
 
-## 🛠️ Technology Stack
+## Core Technical Components
 
-- **Base Model**: Qwen/Qwen2-0.5B-Instruct
-- **Fine-tuning Method**: QLoRa (Quantized Low-Rank Adaptation)
-- **Framework**: Transformers + PEFT + TRL
-- **Quantization**: 4-bit quantization using BitsAndBytesConfig
-- **Training**: Supervised Fine-Tuning (SFT)
-- **Dataset**: ruslanmv/ai-medical-chatbot
+### 1. Initial Supervised Fine-Tuning (SFT)
+The base model is initially fine-tuned on specialized medical datasets using Quantized Low-Rank Adaptation (QLoRA). This ensures the model acquires essential medical knowledge and conversational structure while maintaining a minimal memory footprint, suitable for deployment on consumer-grade hardware.
 
-## 📋 Requirements
+### 2. High-Efficiency Inference Pipeline
+The inference engine is built on FastAPI and utilizes 4-bit quantization for rapid response generation. It supports multi-turn conversations and maintains context through a structured chat template system.
 
-Install the required dependencies:
+### 3. Continuous Learning via KTO
+Unlike traditional static models, this system captures every user interaction. When a user provides feedback (Like/Dislike) in the interface, the data is stored in a local SQLite database and periodically used to re-align the model's weights using Kahneman-Tversky Optimization (KTO).
 
-```bash
-pip install torch transformers datasets peft trl bitsandbytes accelerate
+---
+
+## Technical Analysis: KTO vs. DPO
+
+A critical architectural decision in this project was the selection of Kahneman-Tversky Optimization (KTO) over Direct Preference Optimization (DPO).
+
+### The Challenge of Real-World Feedback
+Standard preference optimization (DPO) requires paired data: for every prompt, the system must provide a "chosen" response and a "rejected" response simultaneously. In a live production environment, this is rarely feasible as users typically interact with a single generated output.
+
+### The KTO Solution
+KTO is mathematically designed to handle **unpaired preference data**. It treats each interaction as a binary signal of desirability.
+
+| Feature | Direct Preference Optimization (DPO) | Kahneman-Tversky Optimization (KTO) |
+| :--- | :--- | :--- |
+| **Data Requirement** | Paired (Chosen + Rejected) | Unpaired (Single label: Good or Bad) |
+| **UX Compatibility** | Requires A/B testing or ranking | Fits standard Like/Dislike interaction |
+| **Deployment Fit** | Best for offline datasets | Best for continuous online learning |
+| **Robustness** | Sensitive to the quality of the "rejected" pair | Highly robust to noisy, real-world signals |
+
+**Conclusion**: KTO allows this system to learn from every single click without the logistical overhead of generating synthetic pairs or forcing users into complex ranking tasks. This makes the learning loop truly continuous and aligned with natural human-computer interaction.
+
+---
+
+## Project Structure
+
+```text
+app/
+├── api/            # RESTful endpoints for Chat, Feedback, and Training
+├── core/           # Configuration, Model Management, and Database Logic
+├── schemas/        # Pydantic data validation models
+└── training/       # Implementation of SFT and KTO training loops
 ```
 
-Or use the provided requirements.txt:
+## System Requirements and Deployment
 
+### Installation
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🔧 Hardware Requirements
-
-- **GPU**: NVIDIA GPU with CUDA support (minimum 8GB VRAM recommended)
-- **RAM**: Sufficient system memory for dataset processing
-- **Storage**: ~5GB for model weights and training artifacts
-
-## 📁 Project Structure
-
-```
-.
-├── finetuning_with_ruslanmv.ipynb    # Main fine-tuning notebook
-├── requirements.txt                   # Python dependencies
-├── README.md                         # Project documentation
-└── qwen2-medical-adapter/            # Generated LoRA adapter weights
-```
-
-## 🚀 Quick Start
-
-### 1. Environment Setup
-
-Ensure you have CUDA available:
-
-```python
-import torch
-print(f"CUDA available: {torch.cuda.is_available()}")
-print(f"CUDA version: {torch.version.cuda}")
-print(f"GPU count: {torch.cuda.device_count()}")
-```
-
-### 2. Model Configuration
-
-The project uses QLoRa configuration:
-- **Quantization**: 4-bit (nf4)
-- **Double Quantization**: Enabled
-- **Compute Dtype**: bfloat16
-
-### 3. Dataset Preparation
-
-The model is fine-tuned on the `ruslanmv/ai-medical-chatbot` dataset:
-- **Training Split**: 900 samples
-- **Evaluation Split**: 100 samples
-- **Format**: Chat template with system, user, and assistant messages
-
-### 4. Training Configuration
-
-Key training parameters:
-- **Epochs**: 3
-- **Batch Size**: 4 (per device)
-- **Gradient Accumulation**: 4 steps
-- **Learning Rate**: 2e-4
-- **Optimizer**: paged_adamw_8bit (QLoRa-specific)
-- **Scheduler**: Cosine with warmup ratio of 0.1
-
-### 5. LoRA Configuration
-
-```python
-peft_config = LoraConfig(
-    r=16,                    # Rank
-    lora_alpha=32,           # Alpha parameter
-    lora_dropout=0.05,       # Dropout rate
-    bias="none",             # Bias training
-    task_type="CAUSAL_LM",   # Task type
-    target_modules="all-linear"  # Target modules
-)
-```
-
-## 📖 Usage
-
-### Training
-
-Run the complete notebook to fine-tune the model:
-
+### Execution
+To initialize the API and the automated database setup, execute:
 ```bash
-jupyter notebook finetuning_with_ruslanmv.ipynb
+python -m app.main
 ```
 
-The training process includes:
-1. GPU setup and verification
-2. Model and tokenizer loading with 4-bit quantization
-3. Dataset loading and preprocessing
-4. Training configuration setup
-5. Model fine-tuning with SFTTrainer
-6. Model evaluation and testing
-7. Saving LoRA adapter weights
+### Operational Workflow
+1. **Interaction**: The user queries the model via the `/v1/chat` endpoint.
+2. **Feedback**: The interface submits user sentiment to `/v1/feedback`.
+3. **Optimization**: The system administrator triggers the continuous learning loop via `/v1/train/continuous/start`, which processes pending feedback and updates the active model weights without downtime.
 
-### Inference
+## Medical Disclaimer
 
-Load the fine-tuned model for inference:
-
-```python
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from peft import PeftModel
-
-# Load base model with quantization
-bnb_config_inf = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_use_double_quant=True,
-    bnb_4bit_compute_dtype=torch.bfloat16
-)
-
-base_model = AutoModelForCausalLM.from_pretrained(
-    "Qwen/Qwen2-0.5B-Instruct",
-    quantization_config=bnb_config_inf,
-    device_map="auto"
-)
-
-# Load LoRA adapter
-model = PeftModel.from_pretrained(base_model, "./qwen2-medical-adapter")
-model = model.merge_and_unload()
-
-# Load tokenizer
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-0.5B-Instruct")
-tokenizer.pad_token = tokenizer.eos_token
-
-# Generate response
-messages = [
-    {"role": "system", "content": "You are a helpful AI medical assistant. Provide safe and informative advice. Do not diagnose. Always recommend consulting a medical professional."},
-    {"role": "user", "content": "Hello, what is the capital of bangladesh?"}
-]
-
-prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-inputs = tokenizer(prompt_text, return_tensors="pt").to("cuda")
-
-outputs = model.generate(
-    **inputs,
-    max_new_tokens=256,
-    do_sample=True,
-    temperature=0.7
-)
-
-response = tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
-print(response)
-```
-
-### Loading from Hugging Face Hub
-
-Use the pre-trained adapter from Hugging Face:
-
-```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-
-model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen2-0.5B-Instruct")
-model = PeftModel.from_pretrained(model, "fahad1770/qwen2-medical-lora")
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2-0.5B-Instruct")
-```
-
-## ⚠️ Important Notes
-
-### Medical Disclaimer
-
-This model is designed for educational purposes and general medical information. **Important**:
-- The model should NOT be used for actual medical diagnosis
-- Always recommend consulting with qualified medical professionals
-- The model provides general information only
-- Medical decisions should never be based solely on AI responses
-
-### Model Limitations
-
-- **Knowledge Cutoff**: Limited to training data
-- **Bias**: May reflect biases present in training data
-- **Accuracy**: Not 100% reliable for medical information
-- **Context**: Limited context window for conversations
-
-## 📊 Training Results
-
-The model is configured to save:
-- **Checkpoints**: Every 50 steps (maximum 3 saved)
-- **Best Model**: Loaded automatically at end of training
-- **TensorBoard Logs**: Available for monitoring training progress
-- **Final Adapter**: Saved to `./qwen2-medical-adapter`
-
-## 🔗 Resources
-
-- **Base Model**: [Qwen/Qwen2-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2-0.5B-Instruct)
-- **Dataset**: [ruslanmv/ai-medical-chatbot](https://huggingface.co/datasets/ruslanmv/ai-medical-chatbot)
-- **QLoRa Paper**: [QLoRA: Efficient Finetuning of Quantized LLMs](https://arxiv.org/abs/2305.14314)
-- **PEFT Library**: [Parameter-Efficient Fine-Tuning](https://github.com/huggingface/peft)
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project follows the same license as the base Qwen2 model. Please check the Hugging Face model card for specific licensing terms.
-
-## 🙏 Acknowledgments
-
-- **Qwen Team**: For the excellent base model
-- **Hugging Face**: For the transformers and PEFT libraries
-- **Dataset Creator**: ruslanmv for the medical chatbot dataset
-- **Research Community**: For QLoRa and efficient fine-tuning techniques
+This software is developed for research and educational purposes. It is not intended for clinical use, medical diagnosis, or as a substitute for professional medical advice. Users should always consult with qualified healthcare professionals for medical concerns.
 
 ---
-
-**Note**: This is a research and educational project. The model should be used responsibly and with appropriate medical disclaimers.
+*Developed for the advancement of interactive medical AI systems.*

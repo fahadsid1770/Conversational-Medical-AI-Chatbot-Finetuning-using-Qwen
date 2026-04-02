@@ -11,3 +11,8 @@ bitsandbytes
 hf_xet
 jupyter
 flash-attn
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+python-multipart
